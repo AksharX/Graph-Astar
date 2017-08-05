@@ -2,35 +2,92 @@
 using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
+using System;
 
 public class Astar : MonoBehaviour {
 
 
     public NavGrid graph;
+    public Transform target;
+
     private Dictionary<Node, float> cost_so_far;
     private Dictionary<Node, Node> came_from;
     private Vector3[] Path;
 
-    public Transform target;
-    
+    private Vector3 lastPosition;
+
+    private Coroutine astarCo;
+
+    private Node updatedTarget;
+    private Node updatedEnemy;
+
+
     // Use this for initialization
     void Start()
     {
-        //GameObject obj = GameObject.FindGameObjectWithTag("Graph");
-        //graph = obj.GetComponent<NavGrid>();
+        Node updatedTarget = graph.ClosestActiveNode(target.position);
+        Node updatedEnemy = graph.ClosestActiveNode(transform.position);
 
-        A_star_search(transform.position, target.position);
-        print(Path[0]);
+        Coroutine astarCo = StartCoroutine(A_star_search(updatedEnemy, updatedTarget));
 
-        transform.DOLocalPath(Path, 3, PathType.CatmullRom).SetEase(Ease.Linear).Play();
+        lastPosition = target.position;
         
     }
-    
-    private void A_star_search(Vector3 start, Vector3 goal)
+
+
+
+    private void Update()
     {
+        if (TargetPositionChanged())
+        {
+            FollowTarget();
+        }
+    }
+
+    /// <summary>
+    /// Will follow the target using A* implementaation
+    /// </summary>
+    private void FollowTarget()
+    {
+
+        if (astarCo != null)
+        {
+            StopCoroutine(astarCo);
+        }
         
-        Node startingNode = graph.GetNodeAt(start);
-        Node goalNode = graph.GetNodeAt(goal);
+        updatedTarget = graph.ClosestActiveNode(target.position);
+        updatedEnemy = graph.ClosestActiveNode(transform.position);
+
+        astarCo = StartCoroutine(A_star_search(updatedEnemy, updatedTarget));
+
+        lastPosition = target.position;
+        
+    }
+
+
+    /// <summary>
+    /// Tests weather the target Position Changed.
+    /// </summary>
+    private bool TargetPositionChanged()
+    {
+        if(target.position == lastPosition)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
+
+
+    /// <summary>
+    /// Sets up a Courutine for A*. Courtuines continues after gothroughing each of it nieghbors
+    /// After courtine is finished. Using the DoTween Libary animates the through the path.
+    IEnumerator A_star_search(Node start, Node goal)
+    {
+        Node startingNode = start;
+        Node goalNode = goal;
         
         BinaryHeep frontier = new BinaryHeep();
         frontier.Add(startingNode, 0f);
@@ -54,7 +111,6 @@ public class Astar : MonoBehaviour {
             List<Node> nieghbors = graph.GetNeighbors(currentNode);
             foreach (Node nextNode in nieghbors)
             {
-                
                 float newCost = CostSoFar(currentNode) + nextNode.graphCost;
                 if(!cost_so_far.ContainsKey(nextNode) || newCost < CostSoFar(nextNode)) // 
                 {
@@ -65,11 +121,11 @@ public class Astar : MonoBehaviour {
                 }
 
             }
-            
+            yield return null;
         }
-        
         getPath(goalNode, startingNode);
-        
+        print("Ending Co: " + Path[4]);
+        transform.DOLocalPath(Path, 2, PathType.CatmullRom).SetEase(Ease.Linear).Play();
     }
 
     private float CostSoFar(Node n)
@@ -84,6 +140,8 @@ public class Astar : MonoBehaviour {
         }
     }
 
+
+    //Returns a list of Vector3 that represent the path from the dictionary CameFrom
     private void getPath(Node goalNode,Node startNode)
     {
         Node current = goalNode;
@@ -97,10 +155,11 @@ public class Astar : MonoBehaviour {
             pathList.Add(current.worldPoint);
         }
         pathList.Add(startNode.worldPoint);
-        pathList.Reverse();
 
+        pathList.Reverse();
         Path = pathList.ToArray();
         
     }
+
 
 }

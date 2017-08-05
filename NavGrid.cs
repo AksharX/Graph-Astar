@@ -6,8 +6,13 @@ using UnityEngine;
 public class NavGrid : MonoBehaviour {
 
     public GenerateDungeon generateDungeon;
+
+    //Decreasing this will decrease performance but have fine points.
     public float DistanceBetweenNodes = 1;
+    //Add a layer of cushion for for the Gridd to be generated.
     public float PadddingOnGameWorld = 10;
+
+    //Determines where the center of the grid will occur.
     public Vector3 GridCenterOrigin = new Vector3(0, 0, 0);
 
     private Vector3 startingPoint;
@@ -44,6 +49,8 @@ public class NavGrid : MonoBehaviour {
         generateGraph();
     }
 
+
+    //Generate a 3D grid of nodes that checks if there are any obstacles in the way and will set the node to Inactive if there is.
     void generateGraph()
     {
         Vector3 pointInWorld = startingPoint;
@@ -68,6 +75,8 @@ public class NavGrid : MonoBehaviour {
         }
     }
 
+
+    // Add more NodePosition if you want to add more nieghbors. Will increase Astar performance if you add more
     public enum NodePosition
     {
         up = 0,
@@ -78,6 +87,8 @@ public class NavGrid : MonoBehaviour {
         back = 5,
 
     }
+
+    //Get a node at a world Point. Will return a node thats closest to that world point Takes in a vector3.
     public Node GetNodeAt(Vector3 worldpoint)
     {
 
@@ -95,6 +106,8 @@ public class NavGrid : MonoBehaviour {
 
     }
 
+
+    //Get the connected Node whether using the NodePosition or not it is Active
     public Node GetConnectedNode(Node node, NodePosition nodePos)
     {
         Vector3 gridPos = node.gridPoint;
@@ -127,12 +140,14 @@ public class NavGrid : MonoBehaviour {
             print("No Conneceted Object at Position:" + nodePos);
             return null;
         }
-
         return NavGraph[(int)gridPos.x, (int)gridPos.y,(int) gridPos.z];
         
     }
 
-    public List<Node> GetNeighbors(Node node)
+
+    ///Get Neighboring Nodes. Can add more neighbors if you update GetConnectedNode function and enum NodeePosition
+    ///If you want to get only want to get active Nodes pass an argument as True
+    public List<Node> GetNeighbors(Node node,bool insert_Active_Only = true)
     {
         List<Node> neighbors = new List<Node>();
         foreach (NodePosition np in Enum.GetValues(typeof(NodePosition)))
@@ -140,28 +155,84 @@ public class NavGrid : MonoBehaviour {
             Node n = GetConnectedNode(node,np);
             if (n != null)
             {
-                neighbors.Add(n);
+                if(n.isActive == true || insert_Active_Only == false)
+                {
+                    neighbors.Add(n);
+                }
             }
         }
         return neighbors;
     }
 
+
+    //Get ClosestActive Node performs a uniform graph search until it finds an active node.
+    public Node ClosestActiveNode(Vector3 start)
+    {
+        Node currentNode = GetNodeAt(start);
+        if (currentNode.isActive == true)
+        {
+            return currentNode;
+        }
+        if (currentNode == null)
+        {
+            Vector3 NodeAtEdgeOfMap = getClosetNodetoEdge();
+            return currentNode = GetNodeAt(NodeAtEdgeOfMap);
+        }
+
+        Queue<Node> frontier = new Queue<Node>();
+        frontier.Enqueue(currentNode);
+
+        Dictionary<Node, bool> Visited = new Dictionary<Node, bool>();
+        Visited[currentNode] = true;
+
+        while (frontier.Count > 0)
+        {
+            currentNode = frontier.Dequeue();
+
+            if (currentNode.isActive == true)
+            {
+                return currentNode;
+            }
+
+            foreach (Node nextNode in GetNeighbors(currentNode, false))
+            {
+                if (!Visited.ContainsKey(nextNode))
+                {
+                    frontier.Enqueue(nextNode);
+                    Visited[nextNode] = true;
+                }
+            }
+        }
+        // Returns Node[0,0,0] if it does not find any point that is active
+        print("Something Went Wrong! Could Not Find a Point");
+        return GetNodeAt(new Vector3(0, 0, 0));
+
+    }
+
+
+    //If Object goes beyond our Grid. Find a point closest inside grid. Not implemented yet
+    private Vector3 getClosetNodetoEdge()
+    {
+        throw new NotImplementedException("Did Not Implement the function to Return a node when Target Goes outside of GameArea");
+    }
+
+    //Checks if Node is Outside the GameArea. Does not check if it is active or not!
     public bool IsOutsideGameArea(Vector3 point)
     {
         // Point must be GridPoint;
         int x = (int) point.x;
         int y = (int) point.y;
         int z = (int) point.z;
-        if (x < 0 || y < 0 || z < 0 || x > NodeSizeX || y > NodeSizeY || z > NodeSizeZ)
+        if (x < 0 || y < 0 || z < 0 || x > NodeSizeX - 1  || y > NodeSizeY - 1  || z > NodeSizeZ - 1 )
         {
             print("Point is Outside of Game Area!");
             return true;
         }
-        
-        else if (NavGraph[x,y,z].isActive == false)
-        {
-            return true;
-        }
+
+        //else if (navgraph[x, y, z].isactive == false && includeactivenodes == true)
+        //{
+        //    return true;
+        //}
         else
         {
             return false;
@@ -169,6 +240,8 @@ public class NavGrid : MonoBehaviour {
             
     }
 
+
+    //Heuristic is using the manhattan distance. Can be change for whatever you want
     public float Heuristic(Node a, Node b)
     {
         Vector3 aP = a.worldPoint;
