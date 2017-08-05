@@ -1,2 +1,2 @@
 # Graph-Astar
-Generating Graph and A-Star Implementation of that Graph
+Generating 3D Graph and A-Star Implementation of that Graph
