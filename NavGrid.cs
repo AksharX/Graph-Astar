@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class NavGrid : MonoBehaviour {
 
-    public GenerateDungeon generateDungeon;
+    public Vector _GameSize;
 
     //Decreasing this will decrease performance but have fine points.
     public float DistanceBetweenNodes = 1;
@@ -27,7 +27,7 @@ public class NavGrid : MonoBehaviour {
     void Start()
     {
 
-        gameSize = generateDungeon.bounds;
+        gameSize = _GameSize;
         //Game Size is multiplied by two because original game size is taking negative and positive;
         gameSize.Scale(new Vector3(2, 2, 2));
         generateDungeon = null;
