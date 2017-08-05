@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class NavGrid : MonoBehaviour {
 
-    public Vector _GameSize;
+    public Vector3 _GameSize;
 
     //Decreasing this will decrease performance but have fine points.
     public float DistanceBetweenNodes = 1;
